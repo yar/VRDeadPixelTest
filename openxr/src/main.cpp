@@ -35,9 +35,10 @@ namespace {
 constexpr wchar_t kWindowClassName[] = L"VRDeadPixelTestCompanion";
 constexpr wchar_t kWindowTitle[] = L"VRDeadPixelTest";
 constexpr float kSphereRadiusMeters = 3.0F;
-constexpr float kBrightnessMinimum = 0.5F;
-constexpr float kBrightnessMaximum = 1.5F;
-constexpr float kBrightnessStep = 0.1F;
+constexpr int kBrightnessMinimumPercent = 50;
+constexpr int kBrightnessMaximumPercent = 200;
+constexpr int kBrightnessStepPercent = 10;
+constexpr float kBrightnessReferenceScale = 1.3F;
 
 std::ofstream gLog;
 std::filesystem::path gLogPath;
@@ -238,10 +239,14 @@ class Application {
 
     LRESULT WindowProcedure(UINT message, WPARAM wParam, LPARAM lParam) {
         switch (message) {
-            case WM_KEYDOWN:
-                if ((lParam & (1LL << 30)) != 0) {
+            case WM_KEYDOWN: {
+                const bool isBrightnessKey = wParam == VK_UP || wParam == VK_DOWN;
+                const bool isRepeat = (lParam & (1LL << 30)) != 0;
+                if (isRepeat && !isBrightnessKey) {
                     return 0;
                 }
+                const int repeatCount =
+                    std::max(1, static_cast<int>(lParam & 0xFFFF));
                 if (wParam == VK_SPACE || wParam == VK_RIGHT) {
                     MovePalette(1);
                     return 0;
@@ -251,11 +256,11 @@ class Application {
                     return 0;
                 }
                 if (wParam == VK_UP) {
-                    AdjustBrightness(1);
+                    AdjustBrightness(1, repeatCount);
                     return 0;
                 }
                 if (wParam == VK_DOWN) {
-                    AdjustBrightness(-1);
+                    AdjustBrightness(-1, repeatCount);
                     return 0;
                 }
                 if (wParam == VK_ESCAPE) {
@@ -263,6 +268,7 @@ class Application {
                     return 0;
                 }
                 break;
+            }
             case WM_CLOSE:
                 RequestQuit();
                 return 0;
@@ -356,12 +362,10 @@ class Application {
 
         SelectObject(dc, bodyFont);
         SetTextColor(dc, muted);
-        const int brightnessPercent =
-            static_cast<int>(std::lround(brightness_ * 100.0F));
         std::wstring position = std::to_wstring(paletteIndex_ + 1) + L" of " +
                                 std::to_wstring(kPalettes.size()) + L"  ·  " +
                                 palette.note + L"  ·  " +
-                                std::to_wstring(brightnessPercent) + L"% brightness";
+                                std::to_wstring(brightnessPercent_) + L"% brightness";
         TextOutW(dc, 31, 96, position.c_str(), static_cast<int>(position.size()));
 
         RECT rule{30, 128, client.right - 30, 129};
@@ -969,7 +973,8 @@ class Application {
         constants.outputParameters = {
             shaderUsesLinearColor_ ? 1.0F : 0.0F,
             0.9F / 255.0F,
-            brightness_,
+            (static_cast<float>(brightnessPercent_) / 100.0F) *
+                kBrightnessReferenceScale,
             0.0F,
         };
         return constants;
@@ -1029,13 +1034,11 @@ class Application {
         }
     }
 
-    void AdjustBrightness(int direction) {
-        const float next = brightness_ + static_cast<float>(direction) * kBrightnessStep;
-        brightness_ = std::clamp(std::round(next * 10.0F) / 10.0F,
-                                 kBrightnessMinimum, kBrightnessMaximum);
-        Log("Brightness set to " +
-            std::to_string(static_cast<int>(std::lround(brightness_ * 100.0F))) +
-            "%");
+    void AdjustBrightness(int direction, int steps = 1) {
+        brightnessPercent_ = std::clamp(
+            brightnessPercent_ + direction * steps * kBrightnessStepPercent,
+            kBrightnessMinimumPercent, kBrightnessMaximumPercent);
+        Log("Brightness set to " + std::to_string(brightnessPercent_) + "%");
         if (window_ != nullptr) {
             InvalidateRect(window_, nullptr, FALSE);
         }
@@ -1129,7 +1132,7 @@ class Application {
     std::size_t paletteIndex_{};
     std::size_t previousPaletteIndex_{};
     Clock::time_point paletteChangeTime_{Clock::now() - std::chrono::seconds(1)};
-    float brightness_{1.0F};
+    int brightnessPercent_{100};
     std::array<float, 3> sphereCenter_{};
     bool sphereCenterInitialized_{};
 };

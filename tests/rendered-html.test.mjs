@@ -53,8 +53,10 @@ test("keeps requested keyboard controls and a disposable interface", async () =>
   assert.match(component, /event\.key === "ArrowUp"/);
   assert.match(component, /event\.key === "ArrowDown"/);
   assert.match(component, /const BRIGHTNESS_MIN = 50/);
-  assert.match(component, /const BRIGHTNESS_MAX = 150/);
+  assert.match(component, /const BRIGHTNESS_MAX = 200/);
+  assert.match(component, /const BRIGHTNESS_REFERENCE_SCALE = 1\.3/);
   assert.match(component, /useState\(100\)/);
+  assert.match(component, /event\.repeat && !isBrightnessKey/);
   assert.match(component, /event\.key === "Escape"/);
   assert.match(component, /requestAnimationFrame/);
   assert.match(component, /requestFullscreen/);

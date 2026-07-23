@@ -38,8 +38,9 @@ replace the manufacturer's own acceptance test.
    staring hard at one spot.
 4. Press `Space` or `Right Arrow` to try the next color. Different colors help
    reveal different failed subpixels.
-5. Use `Up Arrow` and `Down Arrow` to change brightness. Start at 100%, then
-   check both brighter and darker settings.
+5. Use `Up Arrow` and `Down Arrow` to change brightness. You can tap for one
+   step or hold a key to keep adjusting. Start at 100%, then check both brighter
+   and darker settings.
 6. Press `P` if you want to pause and compare the moving and stationary views.
 
 | Key | What it does |
@@ -52,7 +53,9 @@ replace the manufacturer's own acceptance test.
 | `F` | Enter or leave fullscreen |
 | `Esc` | End the test session |
 
-Brightness starts at 100% and is limited to 50–150%.
+Brightness starts at 100% and can be adjusted from 50% to 200% in 10% steps.
+This 100% setting is intentionally a little brighter than it used to be: it
+matches the old version's 130% setting.
 
 ## Using the VR test
 
@@ -74,7 +77,8 @@ Brightness starts at 100% and is limited to 50–150%.
 | Decrease brightness | `Down Arrow` | Keyboard only |
 | Exit | `Esc` | Right `B` or right Menu |
 
-Brightness uses the same 50–150% range and 10% steps as the browser version.
+Brightness uses the same 50–200% range and 10% steps as the browser version.
+You can hold either arrow key to move through several steps.
 
 ## What to look for
 
@@ -124,7 +128,12 @@ properly between the eyes and have the expected depth.
 The sphere stays fixed in OpenXR's local space. Instead of automatically moving
 the texture, the app lets normal head movement sweep the pattern across the
 headset panels. Brightness is applied after the pattern is drawn, using the same
-50–150% range as the 2D version.
+50–200% range as the 2D version.
+
+The brightness scale was recalibrated in version 0.3.0. The new 100% is 1.3
+times the original pattern output, so the full 50–200% control range corresponds
+to 65–260% of that original output. The percentage is a convenient test control,
+not a measurement of the display's physical light output.
 
 When the OpenXR runtime supports it, the app uses a 16-bit floating-point color
 buffer to reduce visible color steps. It also adds very fine sphere-locked

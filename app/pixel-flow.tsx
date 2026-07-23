@@ -151,8 +151,9 @@ const speedOptions = [18, 28, 42];
 const TAU = Math.PI * 2;
 const VARIATION_SAMPLE_STEP = 4;
 const BRIGHTNESS_MIN = 50;
-const BRIGHTNESS_MAX = 150;
+const BRIGHTNESS_MAX = 200;
 const BRIGHTNESS_STEP = 10;
+const BRIGHTNESS_REFERENCE_SCALE = 1.3;
 
 function latticeHash(x: number, y: number, seed: number) {
   let value = Math.imul(x, 0x1f123bb5) ^ Math.imul(y, 0x5f356495) ^ seed;
@@ -601,7 +602,9 @@ export function PixelFlow() {
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.repeat) return;
+      const isBrightnessKey =
+        event.key === "ArrowUp" || event.key === "ArrowDown";
+      if (event.repeat && !isBrightnessKey) return;
 
       if (event.key === " " || event.key === "ArrowRight") {
         event.preventDefault();
@@ -635,7 +638,9 @@ export function PixelFlow() {
     window.addEventListener("keydown", handleKeyDown);
     window.addEventListener("pointermove", handlePointerMove, { passive: true });
     document.addEventListener("fullscreenchange", handleFullscreenChange);
-    revealInterface(6200);
+    hideTimerRef.current = window.setTimeout(() => {
+      setInterfaceVisible(false);
+    }, 6200);
 
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
@@ -661,7 +666,8 @@ export function PixelFlow() {
       style={
         {
           "--palette-base": palette.base,
-          "--pattern-brightness": brightness / 100,
+          "--pattern-brightness":
+            (brightness / 100) * BRIGHTNESS_REFERENCE_SCALE,
         } as CSSProperties
       }
       onPointerDown={(event) => {
