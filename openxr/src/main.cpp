@@ -14,6 +14,8 @@
 #include <cstdint>
 #include <cstring>
 #include <exception>
+#include <filesystem>
+#include <fstream>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -33,10 +35,43 @@ namespace {
 constexpr wchar_t kWindowClassName[] = L"PixelFlowXRCompanion";
 constexpr wchar_t kWindowTitle[] = L"Pixel Flow XR";
 
+std::ofstream gLog;
+std::filesystem::path gLogPath;
+
+void Log(const std::string& message) {
+    SYSTEMTIME time{};
+    GetLocalTime(&time);
+    char prefix[32]{};
+    sprintf_s(prefix, "[%02u:%02u:%02u.%03u] ", time.wHour, time.wMinute,
+              time.wSecond, time.wMilliseconds);
+    OutputDebugStringA((std::string(prefix) + message + "\n").c_str());
+    if (gLog) {
+        gLog << prefix << message << '\n';
+        gLog.flush();
+    }
+}
+
+void InitializeLog() {
+    wchar_t localAppData[MAX_PATH]{};
+    const DWORD length = GetEnvironmentVariableW(L"LOCALAPPDATA", localAppData, MAX_PATH);
+    std::filesystem::path directory =
+        length > 0 && length < MAX_PATH
+            ? std::filesystem::path(localAppData) / L"PixelFlowXR"
+            : std::filesystem::temp_directory_path() / L"PixelFlowXR";
+    std::error_code error;
+    std::filesystem::create_directories(directory, error);
+    gLogPath = directory / L"PixelFlowXR.log";
+    gLog.open(gLogPath, std::ios::out | std::ios::trunc);
+    Log("Pixel Flow XR startup");
+}
+
 void CheckXr(XrResult result, const char* operation) {
     if (XR_FAILED(result)) {
-        throw std::runtime_error(std::string(operation) + " failed with OpenXR result " +
-                                 std::to_string(static_cast<int>(result)) + ".");
+        const std::string message =
+            std::string(operation) + " failed with OpenXR result " +
+            std::to_string(static_cast<int>(result)) + ".";
+        Log(message);
+        throw std::runtime_error(message);
     }
 }
 
@@ -44,7 +79,10 @@ void CheckHr(HRESULT result, const char* operation) {
     if (FAILED(result)) {
         char code[16]{};
         sprintf_s(code, "0x%08X", static_cast<unsigned int>(result));
-        throw std::runtime_error(std::string(operation) + " failed with HRESULT " + code + ".");
+        const std::string message =
+            std::string(operation) + " failed with HRESULT " + code + ".";
+        Log(message);
+        throw std::runtime_error(message);
     }
 }
 
@@ -327,14 +365,23 @@ class Application {
     }
 
     void InitializeOpenXr() {
+        Log("Creating OpenXR instance");
         CreateInstance();
+        Log("Selecting headset system");
         SelectSystem();
+        Log("Creating runtime-selected D3D11 device");
         CreateD3DDevice();
+        Log("Creating OpenXR session");
         CreateSession();
+        Log("Creating LOCAL reference space");
         CreateReferenceSpace();
+        Log("Creating controller actions");
         CreateActions();
+        Log("Creating per-eye swapchains");
         CreateSwapchains();
+        Log("Compiling render pipeline");
         CreateRenderPipeline();
+        Log("Initialization complete; waiting for the session to become ready");
         InvalidateRect(window_, nullptr, FALSE);
     }
 
@@ -605,7 +652,9 @@ class Application {
             XrSwapchainCreateInfo createInfo{XR_TYPE_SWAPCHAIN_CREATE_INFO};
             createInfo.usageFlags = XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT;
             createInfo.format = *selectedFormat;
-            createInfo.sampleCount = configuration.recommendedSwapchainSampleCount;
+            // D3D11 rendering in the Khronos sample uses a supported sample count
+            // of one. The runtime performs its own final panel composition.
+            createInfo.sampleCount = 1;
             createInfo.width = configuration.recommendedImageRectWidth;
             createInfo.height = configuration.recommendedImageRectHeight;
             createInfo.faceCount = 1;
@@ -628,11 +677,24 @@ class Application {
 
             swapchain.renderTargets.resize(imageCount);
             for (uint32_t imageIndex = 0; imageIndex < imageCount; ++imageIndex) {
+                // OpenXR D3D11 swapchain textures are typeless. An explicit view
+                // format is therefore required; asking D3D11 to infer it fails on
+                // SteamVR during initialization.
+                D3D11_RENDER_TARGET_VIEW_DESC renderTargetDescription{};
+                renderTargetDescription.Format = swapchainFormat_;
+                renderTargetDescription.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2DARRAY;
+                renderTargetDescription.Texture2DArray.MipSlice = 0;
+                renderTargetDescription.Texture2DArray.FirstArraySlice = 0;
+                renderTargetDescription.Texture2DArray.ArraySize = 1;
                 CheckHr(device_->CreateRenderTargetView(
-                            swapchain.images[imageIndex].texture, nullptr,
+                            swapchain.images[imageIndex].texture, &renderTargetDescription,
                             &swapchain.renderTargets[imageIndex]),
                         "ID3D11Device::CreateRenderTargetView");
             }
+            Log("Created eye " + std::to_string(viewIndex) + " swapchain: " +
+                std::to_string(swapchain.width) + "x" +
+                std::to_string(swapchain.height) + ", " +
+                std::to_string(imageCount) + " images");
         }
     }
 
@@ -696,6 +758,8 @@ class Application {
                 const auto& stateEvent =
                     *reinterpret_cast<const XrEventDataSessionStateChanged*>(&event);
                 sessionState_ = stateEvent.state;
+                Log("Session state changed to " +
+                    std::to_string(static_cast<int>(sessionState_)));
                 InvalidateRect(window_, nullptr, FALSE);
 
                 switch (sessionState_) {
@@ -883,6 +947,7 @@ class Application {
         context_->PSSetShader(pixelShader_.Get(), nullptr, 0);
         context_->PSSetConstantBuffers(0, 1, &constantBuffer);
         context_->Draw(3, 0);
+        context_->OMSetRenderTargets(0, nullptr, nullptr);
 
         XrSwapchainImageReleaseInfo releaseInfo{XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO};
         CheckXr(xrReleaseSwapchainImage(swapchain.handle, &releaseInfo),
@@ -993,11 +1058,16 @@ class Application {
 }  // namespace pixel_flow
 
 int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int) {
+    pixel_flow::InitializeLog();
     try {
         pixel_flow::Application application(instance);
         return application.Run();
     } catch (const std::exception& error) {
-        const std::wstring message = pixel_flow::Utf8ToWide(error.what());
+        pixel_flow::Log(std::string("Fatal error: ") + error.what());
+        std::wstring message = pixel_flow::Utf8ToWide(error.what());
+        if (!pixel_flow::gLogPath.empty()) {
+            message += L"\n\nDiagnostic log:\n" + pixel_flow::gLogPath.wstring();
+        }
         MessageBoxW(nullptr, message.c_str(), L"Pixel Flow XR could not start",
                     MB_OK | MB_ICONERROR);
         return 1;

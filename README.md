@@ -61,6 +61,11 @@ release. Run the result with the headset connected:
 If Windows reports that no OpenXR runtime is available, select or install the
 runtime supplied by the headset platform, then start Pixel Flow XR again.
 
+If the application returns to the home environment during startup, inspect
+`%LOCALAPPDATA%\PixelFlowXR\PixelFlowXR.log`. The log records each initialization
+stage and the exact OpenXR or Direct3D error without requiring the headset to
+remain in the application.
+
 ## Develop the 2D calibration app
 
 ```bash
