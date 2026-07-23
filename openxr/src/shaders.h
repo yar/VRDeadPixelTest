@@ -142,12 +142,13 @@ float4 PixelMain(VertexOutput input) : SV_TARGET
         gOutputParameters.y;
     if (gOutputParameters.x > 0.5)
     {
-        float3 encoded = saturate(LinearToSrgb(color) + dither);
+        float3 encoded = saturate(
+            LinearToSrgb(color) * gOutputParameters.z + dither);
         color = SrgbToLinear(encoded);
     }
     else
     {
-        color = saturate(color + dither);
+        color = saturate(color * gOutputParameters.z + dither);
     }
 
     return float4(color, 1.0);

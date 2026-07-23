@@ -1,98 +1,175 @@
 # VRDeadPixelTest
 
-VRDeadPixelTest is an experimental display-inspection tool for finding dead, stuck,
-or partially stuck pixels. Its low-contrast organic pattern gives the eye a
-moving reference field, making a defect that remains fixed to the display easier
-to notice.
+A bad pixel can be surprisingly hard to confirm. A tiny dark or bright dot may
+look like dust, a reflection, or simply part of the picture. Solid-color test
+pages help, but after staring at an unmoving screen for a while your eyes can
+start overlooking small stationary details.
 
-The repository contains two applications:
+VRDeadPixelTest gives your eyes a moving reference instead. The background has
+soft detail and gentle brightness changes, while a real panel defect stays fixed
+to the same physical pixel. That difference in movement can make the defect much
+easier to notice.
 
-- **2D calibration app** — the browser prototype in `app/`, deployed at
-  [Pixel Flow](https://pixel-flow-display-test.yaroslavdm.chatgpt.site).
-- **OpenXR app** — the native Windows/Direct3D 11 headset application in
-  `openxr/`.
+There are two versions:
 
-## OpenXR behavior
+- [Open the 2D test in a browser](https://pixel-flow-display-test.yaroslavdm.chatgpt.site)
+  for monitors and TVs.
+- [Download the latest Windows release](https://github.com/yar/VRDeadPixelTest/releases/latest)
+  for OpenXR headsets.
 
-The VR pattern is stationary in the OpenXR `LOCAL` reference space. At the first
-valid tracked frame, the app centres a three-metre-radius inspection sphere on
-the headset. Each eye is rendered from its own tracked position by intersecting
-its viewing rays with that finite sphere, producing geometrically correct stereo
-disparity. Turn your head slowly to move the background across the headset
-panels; a panel-fixed defect should not move with it.
+## Before you start
 
-The XR field uses broad, curved, constant-color ribbons with deliberately sharp
-boundaries. Those boundaries are defined directly on the physical sphere, giving
-the two eyes clear matching features for depth fusion without introducing a
-texture seam. This diagnostic pattern intentionally prioritizes stereo clarity;
-the 2D prototype retains its smooth moving pattern.
-Inside each XR ribbon, a low-amplitude, multi-scale stochastic field adds subtle
-brightness variation. Its scales are non-harmonic and rotated away from the
-tracking axes to avoid forming secondary stripes or periodic banding.
-When supported by the runtime, the app renders through a 16-bit floating-point
-swapchain. A sub-LSB dither is attached to physical points on the sphere surface,
-so quantization reduction remains stereo-coherent between the eyes.
+- Clean the screen or headset lenses first. Dust can look very much like a bad
+  pixel.
+- Use your normal viewing position and let the display warm up for a few
+  minutes.
+- In a headset, set the lens spacing and fit as carefully as you normally would.
+  A poorly fitted headset can make the whole image look soft.
+- Move slowly and take breaks. Stop if the moving pattern feels uncomfortable.
 
-The 2D canvas uses the same general strategy with deliberately stronger
-in-band brightness variation: three seamless, non-harmonic noise scales reach
-about twelve percent at theoretical extrema, followed by non-ordered per-pixel
-dithering. The detail is baked into each moving tile only when it is created, so
-the steady animation loop remains a lightweight image copy.
+These tools can help you inspect a display, but they cannot repair pixels or
+replace the manufacturer's own acceptance test.
 
-The VR app carries over all 14 calibrated palettes from the 2D prototype:
-subdued neutrals and mixed tones, RGB-focused mid-tones, dark checks, and bright
-checks. Color changes use the same order in both applications.
+## Using the 2D test
 
-### Controls
+1. Open the [browser version](https://pixel-flow-display-test.yaroslavdm.chatgpt.site).
+2. Press `F` for fullscreen.
+3. Relax your gaze and let the pattern drift. Scan the display rather than
+   staring hard at one spot.
+4. Press `Space` or `Right Arrow` to try the next color. Different colors help
+   reveal different failed subpixels.
+5. Use `Up Arrow` and `Down Arrow` to change brightness. Start at 100%, then
+   check both brighter and darker settings.
+6. Press `P` if you want to pause and compare the moving and stationary views.
 
-| Action | Keyboard | Common VR controllers |
+| Key | What it does |
+| --- | --- |
+| `Space` or `Right Arrow` | Next color |
+| `Left Arrow` | Previous color |
+| `Up Arrow` | Increase brightness by 10% |
+| `Down Arrow` | Decrease brightness by 10% |
+| `P` | Pause or resume movement |
+| `F` | Enter or leave fullscreen |
+| `Esc` | End the test session |
+
+Brightness starts at 100% and is limited to 50–150%.
+
+## Using the VR test
+
+1. Make sure your headset's OpenXR runtime is active. For a Valve Index, this
+   will normally be SteamVR.
+2. Download and run `VRDeadPixelTest.exe` from the
+   [latest release](https://github.com/yar/VRDeadPixelTest/releases/latest).
+3. Put on the headset and turn your head slowly. The pattern stays in the
+   virtual room, so it moves across the headset panels as your view changes.
+4. Work through the colors and brightness levels. It can help to close one eye
+   at a time, especially when checking a suspected spot.
+5. Keep the small desktop companion window focused when using keyboard controls.
+
+| Action | Keyboard | Index and other common controllers |
 | --- | --- | --- |
 | Next color | `Space` or `Right Arrow` | Right `A`, right trackpad, or right Select |
 | Previous color | `Left Arrow` | Left `X`, left trackpad, or left Select |
+| Increase brightness | `Up Arrow` | Keyboard only |
+| Decrease brightness | `Down Arrow` | Keyboard only |
 | Exit | `Esc` | Right `B` or right Menu |
 
-The small desktop companion window must have keyboard focus for keyboard input.
-No interface is drawn inside the headset, so the inspection field remains
-unobstructed.
+Brightness uses the same 50–150% range and 10% steps as the browser version.
 
-## Build the OpenXR app
+## What to look for
 
-Requirements:
+- A **dead pixel** usually remains dark when the surrounding pattern becomes
+  bright.
+- A **stuck pixel** may remain bright, or stay red, green, or blue when the
+  surrounding colors change.
+- A **partly failed pixel** may only stand out on certain colors, which is why it
+  is worth checking every palette.
+- A panel defect stays in the same place on the physical display. Pattern detail
+  moves past it.
+- If a mark might be dust, clean the surface and repeat the test before drawing
+  a conclusion.
 
-- Windows 10 or 11
-- An active OpenXR runtime for the connected headset
-- Visual Studio with **Desktop development with C++**
-- CMake 3.24+ and Ninja
+# Part 2: How it works under the hood
 
-From PowerShell:
+## The basic idea
 
-```powershell
-.\openxr\build.ps1
-```
+Both programs place low-contrast detail behind the display pixels. The detail
+gives your vision something to track. Background features move, while a physical
+pixel defect cannot move, so the defect separates from the flow.
 
-The build downloads the official Khronos OpenXR loader at the pinned 1.1.58
-release. Run the result with the headset connected:
+The bands have sharp edges to give clear reference points. Within each band are
+small, irregular brightness changes and fine dithering. The changes are blended
+from several different sizes so they do not settle into another obvious striped
+pattern.
 
-```powershell
-.\out-openxr\bin\VRDeadPixelTest.exe
-```
+## The 2D version
 
-If Windows reports that no OpenXR runtime is available, select or install the
-runtime supplied by the headset platform, then start VRDeadPixelTest again.
+The browser draws a wide repeating canvas tile and slides it horizontally. Its
+in-band brightness variation is deliberately stronger than the VR version,
+reaching about 12% at the most extreme possible points. Fine random dithering
+helps prevent large patches from collapsing to exactly the same 8-bit color.
 
-If the application returns to the home environment during startup, inspect
-`%LOCALAPPDATA%\VRDeadPixelTest\VRDeadPixelTest.log`. The log records each initialization
-stage and the exact OpenXR or Direct3D error without requiring the headset to
-remain in the application.
+The detailed tile is prepared only when the page opens, the window changes size,
+or a new palette is selected. Normal animation just copies that finished image,
+which keeps the frame-by-frame workload small. Brightness adjustment is handled
+separately, so pressing the arrow keys does not rebuild the pattern.
 
-## Develop the 2D calibration app
+## The VR version
+
+The native app uses OpenXR and Direct3D 11. It places a three-metre-radius sphere
+around the headset's starting position. Each eye views the same physical points
+on that sphere from its own tracked position, so the band boundaries match
+properly between the eyes and have the expected depth.
+
+The sphere stays fixed in OpenXR's local space. Instead of automatically moving
+the texture, the app lets normal head movement sweep the pattern across the
+headset panels. Brightness is applied after the pattern is drawn, using the same
+50–150% range as the 2D version.
+
+When the OpenXR runtime supports it, the app uses a 16-bit floating-point color
+buffer to reduce visible color steps. It also adds very fine sphere-locked
+dithering. If only an 8-bit buffer is available, the same dither helps soften
+quantization without giving the two eyes unrelated noise.
+
+## Colors
+
+Both versions use the same fourteen palettes. They begin with subdued greys and
+mixed colors, continue through red, green, and blue checks, and finish with dark
+and bright options. Changing brightness does not change the selected palette or
+the shape of the pattern.
+
+## Building from source
+
+The browser source is in `app/`. To run it locally:
 
 ```bash
 npm install
 npm run dev
 ```
 
-Use `Space`/`Right Arrow` for the next palette, `Left Arrow` for the previous
-palette, and `Esc` to end the test session.
+The native headset source is in `openxr/`. It currently requires:
 
-VRDeadPixelTest is an inspection aid, not a display certification or medical tool.
+- Windows 10 or 11
+- An active OpenXR runtime
+- Visual Studio with **Desktop development with C++**
+- CMake 3.24 or newer and Ninja
+
+Build it from PowerShell:
+
+```powershell
+.\openxr\build.ps1
+```
+
+The resulting program is:
+
+```text
+out-openxr\bin\VRDeadPixelTest.exe
+```
+
+If the VR app closes during startup, check:
+
+```text
+%LOCALAPPDATA%\VRDeadPixelTest\VRDeadPixelTest.log
+```
+
+That log records which OpenXR or graphics step failed.

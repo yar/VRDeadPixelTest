@@ -150,6 +150,9 @@ const palettes: Palette[] = [
 const speedOptions = [18, 28, 42];
 const TAU = Math.PI * 2;
 const VARIATION_SAMPLE_STEP = 4;
+const BRIGHTNESS_MIN = 50;
+const BRIGHTNESS_MAX = 150;
+const BRIGHTNESS_STEP = 10;
 
 function latticeHash(x: number, y: number, seed: number) {
   let value = Math.imul(x, 0x1f123bb5) ^ Math.imul(y, 0x5f356495) ^ seed;
@@ -419,6 +422,7 @@ export function PixelFlow() {
 
   const [paletteIndex, setPaletteIndex] = useState(0);
   const [speedIndex, setSpeedIndex] = useState(1);
+  const [brightness, setBrightness] = useState(100);
   const [paused, setPaused] = useState(false);
   const [interfaceVisible, setInterfaceVisible] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -440,6 +444,19 @@ export function PixelFlow() {
     (direction: 1 | -1) => {
       setPaletteIndex(
         (current) => (current + direction + palettes.length) % palettes.length,
+      );
+      revealInterface(1800);
+    },
+    [revealInterface],
+  );
+
+  const adjustBrightness = useCallback(
+    (direction: 1 | -1) => {
+      setBrightness((current) =>
+        Math.max(
+          BRIGHTNESS_MIN,
+          Math.min(BRIGHTNESS_MAX, current + direction * BRIGHTNESS_STEP),
+        ),
       );
       revealInterface(1800);
     },
@@ -592,6 +609,12 @@ export function PixelFlow() {
       } else if (event.key === "ArrowLeft") {
         event.preventDefault();
         movePalette(-1);
+      } else if (event.key === "ArrowUp") {
+        event.preventDefault();
+        adjustBrightness(1);
+      } else if (event.key === "ArrowDown") {
+        event.preventDefault();
+        adjustBrightness(-1);
       } else if (event.key === "Escape") {
         event.preventDefault();
         endSession();
@@ -622,14 +645,25 @@ export function PixelFlow() {
         window.clearTimeout(hideTimerRef.current);
       }
     };
-  }, [endSession, movePalette, revealInterface, toggleFullscreen]);
+  }, [
+    adjustBrightness,
+    endSession,
+    movePalette,
+    revealInterface,
+    toggleFullscreen,
+  ]);
 
   return (
     <main
       className={`pixel-flow ${palette.ink} ${
         interfaceVisible ? "interface-visible" : "interface-hidden"
       }`}
-      style={{ "--palette-base": palette.base } as CSSProperties}
+      style={
+        {
+          "--palette-base": palette.base,
+          "--pattern-brightness": brightness / 100,
+        } as CSSProperties
+      }
       onPointerDown={(event) => {
         if (event.target === event.currentTarget) movePalette(1);
       }}
@@ -660,7 +694,9 @@ export function PixelFlow() {
           />
           <span className="palette-copy">
             <strong>{palette.name}</strong>
-            <small>{palette.note}</small>
+            <small>
+              {palette.note} · Brightness {brightness}%
+            </small>
           </span>
           <span className="palette-count">
             {String(paletteIndex + 1).padStart(2, "0")}
@@ -694,6 +730,12 @@ export function PixelFlow() {
           <span>
             <kbd>←</kbd>
             Previous
+          </span>
+          <span className="divider wide-only" />
+          <span className="wide-only">
+            <kbd>↑</kbd>
+            <kbd>↓</kbd>
+            Brightness
           </span>
           <span className="divider wide-only" />
           <span className="wide-only">

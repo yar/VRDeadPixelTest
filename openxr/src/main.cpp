@@ -35,6 +35,9 @@ namespace {
 constexpr wchar_t kWindowClassName[] = L"VRDeadPixelTestCompanion";
 constexpr wchar_t kWindowTitle[] = L"VRDeadPixelTest";
 constexpr float kSphereRadiusMeters = 3.0F;
+constexpr float kBrightnessMinimum = 0.5F;
+constexpr float kBrightnessMaximum = 1.5F;
+constexpr float kBrightnessStep = 0.1F;
 
 std::ofstream gLog;
 std::filesystem::path gLogPath;
@@ -247,6 +250,14 @@ class Application {
                     MovePalette(-1);
                     return 0;
                 }
+                if (wParam == VK_UP) {
+                    AdjustBrightness(1);
+                    return 0;
+                }
+                if (wParam == VK_DOWN) {
+                    AdjustBrightness(-1);
+                    return 0;
+                }
                 if (wParam == VK_ESCAPE) {
                     RequestQuit();
                     return 0;
@@ -345,8 +356,12 @@ class Application {
 
         SelectObject(dc, bodyFont);
         SetTextColor(dc, muted);
+        const int brightnessPercent =
+            static_cast<int>(std::lround(brightness_ * 100.0F));
         std::wstring position = std::to_wstring(paletteIndex_ + 1) + L" of " +
-                                std::to_wstring(kPalettes.size()) + L"  ·  " + palette.note;
+                                std::to_wstring(kPalettes.size()) + L"  ·  " +
+                                palette.note + L"  ·  " +
+                                std::to_wstring(brightnessPercent) + L"% brightness";
         TextOutW(dc, 31, 96, position.c_str(), static_cast<int>(position.size()));
 
         RECT rule{30, 128, client.right - 30, 129};
@@ -359,10 +374,12 @@ class Application {
         TextOutW(dc, 30, 151, L"SPACE / →   Next color", 22);
         TextOutW(dc, 286, 151, L"←   Previous color", 18);
         TextOutW(dc, 30, 181, L"ESC   Exit", 10);
-        TextOutW(dc, 286, 181, L"SPHERE   3.0 m radius", 21);
+        TextOutW(dc, 286, 181, L"↑ / ↓   Brightness", 18);
 
         SetTextColor(dc, muted);
-        std::wstring status = std::wstring(L"STATUS   ") + SessionStateName(sessionState_);
+        std::wstring status = std::wstring(L"STATUS   ") +
+                              SessionStateName(sessionState_) +
+                              L"   ·   SPHERE   3.0 m radius";
         TextOutW(dc, 30, 224, status.c_str(), static_cast<int>(status.size()));
 
         DeleteObject(eyebrowFont);
@@ -952,7 +969,7 @@ class Application {
         constants.outputParameters = {
             shaderUsesLinearColor_ ? 1.0F : 0.0F,
             0.9F / 255.0F,
-            0.0F,
+            brightness_,
             0.0F,
         };
         return constants;
@@ -1007,6 +1024,18 @@ class Application {
         paletteIndex_ = static_cast<std::size_t>(
             (static_cast<int>(paletteIndex_) + direction + count) % count);
         paletteChangeTime_ = Clock::now();
+        if (window_ != nullptr) {
+            InvalidateRect(window_, nullptr, FALSE);
+        }
+    }
+
+    void AdjustBrightness(int direction) {
+        const float next = brightness_ + static_cast<float>(direction) * kBrightnessStep;
+        brightness_ = std::clamp(std::round(next * 10.0F) / 10.0F,
+                                 kBrightnessMinimum, kBrightnessMaximum);
+        Log("Brightness set to " +
+            std::to_string(static_cast<int>(std::lround(brightness_ * 100.0F))) +
+            "%");
         if (window_ != nullptr) {
             InvalidateRect(window_, nullptr, FALSE);
         }
@@ -1100,6 +1129,7 @@ class Application {
     std::size_t paletteIndex_{};
     std::size_t previousPaletteIndex_{};
     Clock::time_point paletteChangeTime_{Clock::now() - std::chrono::seconds(1)};
+    float brightness_{1.0F};
     std::array<float, 3> sphereCenter_{};
     bool sphereCenterInitialized_{};
 };

@@ -50,12 +50,18 @@ test("keeps requested keyboard controls and a disposable interface", async () =>
   assert.match(component, /event\.key === " "/);
   assert.match(component, /event\.key === "ArrowRight"/);
   assert.match(component, /event\.key === "ArrowLeft"/);
+  assert.match(component, /event\.key === "ArrowUp"/);
+  assert.match(component, /event\.key === "ArrowDown"/);
+  assert.match(component, /const BRIGHTNESS_MIN = 50/);
+  assert.match(component, /const BRIGHTNESS_MAX = 150/);
+  assert.match(component, /useState\(100\)/);
   assert.match(component, /event\.key === "Escape"/);
   assert.match(component, /requestAnimationFrame/);
   assert.match(component, /requestFullscreen/);
   assert.match(component, /applyInBandVariation/);
   assert.match(component, /tileableValueNoise/);
   assert.match(css, /interface-hidden/);
+  assert.match(css, /brightness\(var\(--pattern-brightness/);
   assert.match(css, /prefers-reduced-motion:\s*reduce/);
   assert.match(page, /<PixelFlow \/>/);
   assert.match(layout, /Pixel Flow — Display Inspection/);
