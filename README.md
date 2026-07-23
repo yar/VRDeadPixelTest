@@ -21,9 +21,11 @@ its viewing rays with that finite sphere, producing geometrically correct stereo
 disparity. Turn your head slowly to move the background across the headset
 panels; a panel-fixed defect should not move with it.
 
-The field uses several overlapping analytic waves to vary palette tone and
-brightness continuously. It contains no solid-fill bands or texture seams, and
-the shorter waves are kept low-contrast to avoid a harsh grating effect.
+The XR field uses broad, curved, constant-color ribbons with deliberately sharp
+boundaries. Those boundaries are defined directly on the physical sphere, giving
+the two eyes clear matching features for depth fusion without introducing a
+texture seam. This diagnostic pattern intentionally prioritizes stereo clarity;
+the 2D prototype retains its smooth moving pattern.
 When supported by the runtime, the app renders through a 16-bit floating-point
 swapchain. A sub-LSB dither is attached to physical points on the sphere surface,
 so quantization reduction remains stereo-coherent between the eyes.
