@@ -2,7 +2,7 @@ name: Deploy 2D test to GitHub Pages
 
 on:
   push:
-    branches: [main, agent/github-pages-hosting]
+    branches: [main]
     paths:
       - ".github/workflows/pages.yml"
       - "app/**"
