@@ -1,34 +1,31 @@
 # VRDeadPixelTest
 
-A bad pixel can be surprisingly hard to confirm. A tiny dark or bright dot may
-look like dust, a reflection, or simply part of the picture. Solid-color test
-pages help, but after staring at an unmoving screen for a while your eyes can
-start overlooking small stationary details.
+A bad pixel can be difficult to notice among millions of normal pixels.
+Solid-color test pages help, but after staring at an unmoving screen for a while
+your eyes can start overlooking small stationary details.
 
 VRDeadPixelTest gives your eyes a moving reference instead. The background has
-soft detail and gentle brightness changes, while a real panel defect stays fixed
+soft detail and gentle brightness changes, while a panel defect stays fixed
 to the same physical pixel. That difference in movement can make the defect much
 easier to notice.
 
 There are two versions:
 
-- [Open the 2D test in a browser](https://yar.github.io/VRDeadPixelTest/)
+- 2D: [Open the 2D test in a browser](https://yar.github.io/VRDeadPixelTest/)
   for monitors and TVs.
-- [Download the latest Windows release](https://github.com/yar/VRDeadPixelTest/releases/latest)
+- VR: [Download the latest Windows release](https://github.com/yar/VRDeadPixelTest/releases/latest)
   for OpenXR headsets.
 
 ## Before you start
 
 - Clean the screen or headset lenses first. Dust can look very much like a bad
   pixel.
-- Use your normal viewing position and let the display warm up for a few
-  minutes.
 - In a headset, set the lens spacing and fit as carefully as you normally would.
   A poorly fitted headset can make the whole image look soft.
-- Move slowly and take breaks. Stop if the moving pattern feels uncomfortable.
+- Scan the whole screens with your eyes slowly and take breaks. Stop if the
+  moving pattern feels uncomfortable.
 
-These tools can help you inspect a display, but they cannot repair pixels or
-replace the manufacturer's own acceptance test.
+These tools can help you inspect a display, but they cannot repair pixels.
 
 ## Using the 2D test
 
@@ -54,20 +51,16 @@ replace the manufacturer's own acceptance test.
 | `Esc` | End the test session |
 
 Brightness starts at 100% and can be adjusted from 50% to 200% in 10% steps.
-This 100% setting is intentionally a little brighter than it used to be: it
-matches the old version's 130% setting.
 
 ## Using the VR test
 
-1. Make sure your headset's OpenXR runtime is active. For a Valve Index, this
-   will normally be SteamVR.
-2. Download and run `VRDeadPixelTest.exe` from the
+1. Download and run `VRDeadPixelTest.exe` from the
    [latest release](https://github.com/yar/VRDeadPixelTest/releases/latest).
-3. Put on the headset and turn your head slowly. The pattern stays in the
+2. Put on the headset and turn your head slowly. The pattern stays in the
    virtual room, so it moves across the headset panels as your view changes.
-4. Work through the colors and brightness levels. It can help to close one eye
+3. Work through the colors and brightness levels. It can help to close one eye
    at a time, especially when checking a suspected spot.
-5. Keep the small desktop companion window focused when using keyboard controls.
+4. Keep the small desktop companion window focused when using keyboard controls.
 
 | Action | Keyboard | Index and other common controllers |
 | --- | --- | --- |
@@ -84,10 +77,10 @@ You can hold either arrow key to move through several steps.
 
 - A **dead pixel** usually remains dark when the surrounding pattern becomes
   bright.
-- A **stuck pixel** may remain bright, or stay red, green, or blue when the
-  surrounding colors change.
-- A **partly failed pixel** may only stand out on certain colors, which is why it
-  is worth checking every palette.
+- A **stuck pixel** may remain bright, or stay red, green, or blue (or a
+  combination color) when the surrounding colors change.
+- A **partly failed pixel** may only stand out on certain colors, which is why
+  it is worth checking every palette.
 - A panel defect stays in the same place on the physical display. Pattern detail
   moves past it.
 - If a mark might be dust, clean the surface and repeat the test before drawing
@@ -120,10 +113,10 @@ separately, so pressing the arrow keys does not rebuild the pattern.
 
 ## The VR version
 
-The native app uses OpenXR and Direct3D 11. It places a three-metre-radius sphere
-around the headset's starting position. Each eye views the same physical points
-on that sphere from its own tracked position, so the band boundaries match
-properly between the eyes and have the expected depth.
+The native app uses OpenXR and Direct3D 11. It places a three-metre-radius
+sphere around the headset's starting position. Each eye views the same physical
+points on that sphere from its own tracked position, so the band boundaries
+match properly between the eyes and have the expected depth.
 
 The sphere stays fixed in OpenXR's local space. Instead of automatically moving
 the texture, the app lets normal head movement sweep the pattern across the
