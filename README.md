@@ -33,6 +33,12 @@ When supported by the runtime, the app renders through a 16-bit floating-point
 swapchain. A sub-LSB dither is attached to physical points on the sphere surface,
 so quantization reduction remains stereo-coherent between the eyes.
 
+The 2D canvas uses the same general strategy with deliberately stronger
+in-band brightness variation: three seamless, non-harmonic noise scales reach
+about twelve percent at theoretical extrema, followed by non-ordered per-pixel
+dithering. The detail is baked into each moving tile only when it is created, so
+the steady animation loop remains a lightweight image copy.
+
 The VR app carries over all 14 calibrated palettes from the 2D prototype:
 subdued neutrals and mixed tones, RGB-focused mid-tones, dark checks, and bright
 checks. Color changes use the same order in both applications.

@@ -53,6 +53,8 @@ test("keeps requested keyboard controls and a disposable interface", async () =>
   assert.match(component, /event\.key === "Escape"/);
   assert.match(component, /requestAnimationFrame/);
   assert.match(component, /requestFullscreen/);
+  assert.match(component, /applyInBandVariation/);
+  assert.match(component, /tileableValueNoise/);
   assert.match(css, /interface-hidden/);
   assert.match(css, /prefers-reduced-motion:\s*reduce/);
   assert.match(page, /<PixelFlow \/>/);
