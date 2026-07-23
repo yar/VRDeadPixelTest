@@ -10,6 +10,9 @@ cbuffer PatternConstants : register(b0)
     float4 gFleck;
     float4 gOrientation;
     float4 gFov;
+    float4 gEyePosition;
+    float4 gSphereCenterRadius;
+    float4 gOutputParameters;
 };
 
 struct VertexOutput
@@ -43,12 +46,48 @@ float3 PaletteGradient(float coordinate)
                 gColors[lowerIndex + 2].rgb, amount);
 }
 
+float Hash31(float3 value)
+{
+    value = frac(value * 0.1031);
+    value += dot(value, value.yzx + 33.33);
+    return frac((value.x + value.y) * value.z);
+}
+
+float3 LinearToSrgb(float3 value)
+{
+    float3 low = value * 12.92;
+    float3 high = 1.055 * pow(max(value, 0.0), 1.0 / 2.4) - 0.055;
+    return lerp(low, high, step(0.0031308, value));
+}
+
+float3 SrgbToLinear(float3 value)
+{
+    float3 low = value / 12.92;
+    float3 high = pow((max(value, 0.0) + 0.055) / 1.055, 2.4);
+    return lerp(low, high, step(0.04045, value));
+}
+
 float4 PixelMain(VertexOutput input) : SV_TARGET
 {
     float viewX = lerp(gFov.x, gFov.y, input.uv.x);
     float viewY = lerp(gFov.z, gFov.w, input.uv.y);
     float3 viewDirection = normalize(float3(viewX, viewY, -1.0));
-    float3 worldDirection = normalize(RotateByQuaternion(viewDirection, gOrientation));
+    float3 rayDirection = normalize(RotateByQuaternion(viewDirection, gOrientation));
+
+    // Intersect this eye's world-space ray with the finite inspection sphere.
+    // The larger root is the forward-facing surface seen from inside the sphere.
+    float3 centerToEye = gEyePosition.xyz - gSphereCenterRadius.xyz;
+    float projectedOrigin = dot(centerToEye, rayDirection);
+    float sphereEquation =
+        dot(centerToEye, centerToEye) -
+        gSphereCenterRadius.w * gSphereCenterRadius.w;
+    float discriminant = max(
+        projectedOrigin * projectedOrigin - sphereEquation, 0.0);
+    float distanceToSurface = -projectedOrigin + sqrt(discriminant);
+    float3 surfacePosition =
+        gEyePosition.xyz + rayDirection * distanceToSurface;
+    float3 worldDirection = normalize(
+        surfacePosition - gSphereCenterRadius.xyz);
 
     // Analytic waves evaluated directly on the unit sphere. Because the field
     // depends on the 3D direction rather than latitude/longitude, it remains
@@ -99,6 +138,21 @@ float4 PixelMain(VertexOutput input) : SV_TARGET
     float trough = 1.0 - smoothstep(0.0, 0.28, broadWave * 0.5 + 0.5);
     color = lerp(color, gContour.rgb, crest * gContour.a * 0.22);
     color = lerp(color, gFleck.rgb, trough * gFleck.a * 0.18);
+
+    // Sub-LSB dither is indexed by the finite sphere's physical surface, not
+    // by render-target pixels. It therefore follows the same geometry and
+    // disparity in both eyes instead of producing binocularly independent noise.
+    float dither =
+        (Hash31(floor(surfacePosition * 260.0)) - 0.5) * gOutputParameters.y;
+    if (gOutputParameters.x > 0.5)
+    {
+        float3 encoded = saturate(LinearToSrgb(color) + dither);
+        color = SrgbToLinear(encoded);
+    }
+    else
+    {
+        color = saturate(color + dither);
+    }
 
     return float4(color, 1.0);
 }

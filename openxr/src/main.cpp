@@ -34,6 +34,7 @@ namespace {
 
 constexpr wchar_t kWindowClassName[] = L"PixelFlowXRCompanion";
 constexpr wchar_t kWindowTitle[] = L"Pixel Flow XR";
+constexpr float kSphereRadiusMeters = 3.0F;
 
 std::ofstream gLog;
 std::filesystem::path gLogPath;
@@ -122,8 +123,9 @@ const wchar_t* SessionStateName(XrSessionState state) {
     }
 }
 
-bool IsSrgbFormat(DXGI_FORMAT format) {
-    return format == DXGI_FORMAT_R8G8B8A8_UNORM_SRGB ||
+bool ShaderUsesLinearColor(DXGI_FORMAT format) {
+    return format == DXGI_FORMAT_R16G16B16A16_FLOAT ||
+           format == DXGI_FORMAT_R8G8B8A8_UNORM_SRGB ||
            format == DXGI_FORMAT_B8G8R8A8_UNORM_SRGB;
 }
 
@@ -205,6 +207,9 @@ class Application {
         std::array<float, 4> fleck{};
         std::array<float, 4> orientation{};
         std::array<float, 4> fov{};
+        std::array<float, 4> eyePosition{};
+        std::array<float, 4> sphereCenterRadius{};
+        std::array<float, 4> outputParameters{};
     };
 
     static_assert(sizeof(PatternConstants) % 16 == 0);
@@ -353,6 +358,7 @@ class Application {
         TextOutW(dc, 30, 151, L"SPACE / →   Next color", 22);
         TextOutW(dc, 286, 151, L"←   Previous color", 18);
         TextOutW(dc, 30, 181, L"ESC   Exit", 10);
+        TextOutW(dc, 286, 181, L"SPHERE   3.0 m radius", 21);
 
         SetTextColor(dc, muted);
         std::wstring status = std::wstring(L"STATUS   ") + SessionStateName(sessionState_);
@@ -621,8 +627,9 @@ class Application {
                 "xrEnumerateSwapchainFormats");
 
         constexpr std::array preferredFormats{
-            DXGI_FORMAT_R8G8B8A8_UNORM_SRGB, DXGI_FORMAT_B8G8R8A8_UNORM_SRGB,
-            DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_FORMAT_B8G8R8A8_UNORM};
+            DXGI_FORMAT_R16G16B16A16_FLOAT, DXGI_FORMAT_R8G8B8A8_UNORM_SRGB,
+            DXGI_FORMAT_B8G8R8A8_UNORM_SRGB, DXGI_FORMAT_R8G8B8A8_UNORM,
+            DXGI_FORMAT_B8G8R8A8_UNORM};
         auto selectedFormat = runtimeFormats.end();
         for (DXGI_FORMAT preferred : preferredFormats) {
             selectedFormat = std::find(runtimeFormats.begin(), runtimeFormats.end(),
@@ -632,10 +639,15 @@ class Application {
             }
         }
         if (selectedFormat == runtimeFormats.end()) {
-            throw std::runtime_error("The runtime has no compatible RGBA8 swapchain format.");
+            throw std::runtime_error("The runtime has no compatible color swapchain format.");
         }
         swapchainFormat_ = static_cast<DXGI_FORMAT>(*selectedFormat);
-        swapchainIsSrgb_ = IsSrgbFormat(swapchainFormat_);
+        shaderUsesLinearColor_ = ShaderUsesLinearColor(swapchainFormat_);
+        Log("Selected swapchain format " +
+            std::to_string(static_cast<int>(swapchainFormat_)) +
+            (swapchainFormat_ == DXGI_FORMAT_R16G16B16A16_FLOAT
+                 ? " (16-bit floating point)"
+                 : " (8-bit fallback)"));
 
         swapchains_.resize(configurationViewCount);
         views_.resize(configurationViewCount);
@@ -764,6 +776,7 @@ class Application {
 
                 switch (sessionState_) {
                     case XR_SESSION_STATE_READY: {
+                        sphereCenterInitialized_ = false;
                         XrSessionBeginInfo beginInfo{XR_TYPE_SESSION_BEGIN_INFO};
                         beginInfo.primaryViewConfigurationType =
                             XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO;
@@ -773,6 +786,7 @@ class Application {
                     }
                     case XR_SESSION_STATE_STOPPING:
                         sessionRunning_ = false;
+                        sphereCenterInitialized_ = false;
                         CheckXr(xrEndSession(session_), "xrEndSession");
                         if (quitRequested_) {
                             exitRequested_ = true;
@@ -851,6 +865,24 @@ class Application {
                                                        XR_VIEW_STATE_POSITION_VALID_BIT;
             if (viewCount == views_.size() &&
                 (viewState.viewStateFlags & requiredFlags) == requiredFlags) {
+                if (!sphereCenterInitialized_) {
+                    sphereCenter_ = {0.0F, 0.0F, 0.0F};
+                    for (uint32_t viewIndex = 0; viewIndex < viewCount; ++viewIndex) {
+                        sphereCenter_[0] += views_[viewIndex].pose.position.x;
+                        sphereCenter_[1] += views_[viewIndex].pose.position.y;
+                        sphereCenter_[2] += views_[viewIndex].pose.position.z;
+                    }
+                    const float inverseViewCount = 1.0F / static_cast<float>(viewCount);
+                    for (float& component : sphereCenter_) {
+                        component *= inverseViewCount;
+                    }
+                    sphereCenterInitialized_ = true;
+                    Log("Captured inspection sphere center at [" +
+                        std::to_string(sphereCenter_[0]) + ", " +
+                        std::to_string(sphereCenter_[1]) + ", " +
+                        std::to_string(sphereCenter_[2]) + "] with radius " +
+                        std::to_string(kSphereRadiusMeters) + " m");
+                }
                 for (uint32_t viewIndex = 0; viewIndex < viewCount; ++viewIndex) {
                     RenderView(viewIndex, views_[viewIndex]);
                     XrCompositionLayerProjectionView& projection = projectionViews_[viewIndex];
@@ -889,25 +921,39 @@ class Application {
 
         PatternConstants constants{};
         constants.colors[0] = LerpColor(
-            ConvertColor(previous.base, 1.0F, swapchainIsSrgb_),
-            ConvertColor(current.base, 1.0F, swapchainIsSrgb_), blend);
+            ConvertColor(previous.base, 1.0F, shaderUsesLinearColor_),
+            ConvertColor(current.base, 1.0F, shaderUsesLinearColor_), blend);
         for (std::size_t index = 0; index < current.bands.size(); ++index) {
             constants.colors[index + 1] = LerpColor(
-                ConvertColor(previous.bands[index], 1.0F, swapchainIsSrgb_),
-                ConvertColor(current.bands[index], 1.0F, swapchainIsSrgb_), blend);
+                ConvertColor(previous.bands[index], 1.0F, shaderUsesLinearColor_),
+                ConvertColor(current.bands[index], 1.0F, shaderUsesLinearColor_), blend);
         }
         constants.contour = LerpColor(
-            ConvertColor(previous.contour.rgb, previous.contour.opacity, swapchainIsSrgb_),
-            ConvertColor(current.contour.rgb, current.contour.opacity, swapchainIsSrgb_),
+            ConvertColor(previous.contour.rgb, previous.contour.opacity,
+                         shaderUsesLinearColor_),
+            ConvertColor(current.contour.rgb, current.contour.opacity,
+                         shaderUsesLinearColor_),
             blend);
         constants.fleck = LerpColor(
-            ConvertColor(previous.fleck.rgb, previous.fleck.opacity, swapchainIsSrgb_),
-            ConvertColor(current.fleck.rgb, current.fleck.opacity, swapchainIsSrgb_), blend);
+            ConvertColor(previous.fleck.rgb, previous.fleck.opacity,
+                         shaderUsesLinearColor_),
+            ConvertColor(current.fleck.rgb, current.fleck.opacity,
+                         shaderUsesLinearColor_), blend);
 
         constants.orientation = {view.pose.orientation.x, view.pose.orientation.y,
                                  view.pose.orientation.z, view.pose.orientation.w};
         constants.fov = {std::tan(view.fov.angleLeft), std::tan(view.fov.angleRight),
                          std::tan(view.fov.angleUp), std::tan(view.fov.angleDown)};
+        constants.eyePosition = {view.pose.position.x, view.pose.position.y,
+                                 view.pose.position.z, 1.0F};
+        constants.sphereCenterRadius = {sphereCenter_[0], sphereCenter_[1],
+                                        sphereCenter_[2], kSphereRadiusMeters};
+        constants.outputParameters = {
+            shaderUsesLinearColor_ ? 1.0F : 0.0F,
+            0.9F / 255.0F,
+            0.0F,
+            0.0F,
+        };
         return constants;
     }
 
@@ -1043,7 +1089,7 @@ class Application {
     ComPtr<ID3D11Buffer> constantBuffer_;
     ComPtr<ID3D11RasterizerState> rasterizerState_;
     DXGI_FORMAT swapchainFormat_{DXGI_FORMAT_UNKNOWN};
-    bool swapchainIsSrgb_{};
+    bool shaderUsesLinearColor_{};
 
     std::vector<XrViewConfigurationView> configurationViews_;
     std::vector<XrView> views_;
@@ -1053,6 +1099,8 @@ class Application {
     std::size_t paletteIndex_{};
     std::size_t previousPaletteIndex_{};
     Clock::time_point paletteChangeTime_{Clock::now() - std::chrono::seconds(1)};
+    std::array<float, 3> sphereCenter_{};
+    bool sphereCenterInitialized_{};
 };
 
 }  // namespace pixel_flow

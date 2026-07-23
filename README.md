@@ -14,15 +14,19 @@ The repository contains two applications:
 
 ## OpenXR behavior
 
-The VR pattern is stationary in the OpenXR `LOCAL` reference space. It is
-generated directly from each eye's world-space viewing direction, which behaves
-like a seamless, inside-out sphere of infinite radius. Turn your head slowly to
-move the background across the headset panels; a panel-fixed defect should not
-move with it.
+The VR pattern is stationary in the OpenXR `LOCAL` reference space. At the first
+valid tracked frame, the app centres a three-metre-radius inspection sphere on
+the headset. Each eye is rendered from its own tracked position by intersecting
+its viewing rays with that finite sphere, producing geometrically correct stereo
+disparity. Turn your head slowly to move the background across the headset
+panels; a panel-fixed defect should not move with it.
 
 The field uses several overlapping analytic waves to vary palette tone and
 brightness continuously. It contains no solid-fill bands or texture seams, and
 the shorter waves are kept low-contrast to avoid a harsh grating effect.
+When supported by the runtime, the app renders through a 16-bit floating-point
+swapchain. A sub-LSB dither is attached to physical points on the sphere surface,
+so quantization reduction remains stereo-coherent between the eyes.
 
 The VR app carries over all 14 calibrated palettes from the 2D prototype:
 subdued neutrals and mixed tones, RGB-focused mid-tones, dark checks, and bright
