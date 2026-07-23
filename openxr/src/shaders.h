@@ -131,7 +131,7 @@ float4 PixelMain(VertexOutput input) : SV_TARGET
     float fineNoise = ValueNoise3D(
         noiseSpace.zxy * 12.91 + float3(37.0, -17.0, 3.0)) - 0.5;
     float luminanceVariation =
-        0.070 * coarseNoise + 0.035 * mediumNoise + 0.015 * fineNoise;
+        0.085 * coarseNoise + 0.043 * mediumNoise + 0.018 * fineNoise;
     color *= 1.0 + luminanceVariation;
 
     // Sub-LSB dither is indexed by the finite sphere's physical surface, not
