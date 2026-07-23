@@ -25,8 +25,8 @@ $command = "call `"$developerPrompt`" -arch=x64 -host_arch=x64 && $configure && 
 
 & cmd.exe /d /s /c $command
 if ($LASTEXITCODE -ne 0) {
-    throw "The Pixel Flow XR build failed with exit code $LASTEXITCODE."
+    throw "The VRDeadPixelTest build failed with exit code $LASTEXITCODE."
 }
 
-$executable = Join-Path $buildDirectory "bin\PixelFlowXR.exe"
+$executable = Join-Path $buildDirectory "bin\VRDeadPixelTest.exe"
 Write-Host "Built $executable"

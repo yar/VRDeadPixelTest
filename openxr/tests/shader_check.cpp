@@ -12,8 +12,9 @@ bool Compile(const char* entryPoint, const char* profile) {
     ComPtr<ID3DBlob> shader;
     ComPtr<ID3DBlob> errors;
     const HRESULT result = D3DCompile(
-        pixel_flow::kShaderSource, std::strlen(pixel_flow::kShaderSource),
-        "PixelFlowPattern.hlsl", nullptr, nullptr, entryPoint, profile,
+        vr_dead_pixel_test::kShaderSource,
+        std::strlen(vr_dead_pixel_test::kShaderSource),
+        "VRDeadPixelTestPattern.hlsl", nullptr, nullptr, entryPoint, profile,
         D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_WARNINGS_ARE_ERRORS, 0, &shader,
         &errors);
     if (FAILED(result)) {
@@ -32,6 +33,6 @@ int main() {
     if (!vertexValid || !pixelValid) {
         return 1;
     }
-    std::cout << "Pixel Flow XR shaders compiled successfully.\n";
+    std::cout << "VRDeadPixelTest shaders compiled successfully.\n";
     return 0;
 }

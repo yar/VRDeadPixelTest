@@ -1,10 +1,10 @@
-add_executable(pixel_flow_xr WIN32
+add_executable(vr_dead_pixel_test WIN32
   src/main.cpp
   src/palettes.h
   src/shaders.h
 )
 
-target_compile_definitions(pixel_flow_xr PRIVATE
+target_compile_definitions(vr_dead_pixel_test PRIVATE
   NOMINMAX
   UNICODE
   WIN32_LEAN_AND_MEAN
@@ -13,7 +13,7 @@ target_compile_definitions(pixel_flow_xr PRIVATE
   _UNICODE
 )
 
-target_link_libraries(pixel_flow_xr PRIVATE
+target_link_libraries(vr_dead_pixel_test PRIVATE
   openxr_loader
   d3d11
   d3dcompiler
@@ -21,24 +21,24 @@ target_link_libraries(pixel_flow_xr PRIVATE
 )
 
 if(MSVC)
-  target_compile_options(pixel_flow_xr PRIVATE /W4 /permissive- /EHsc /utf-8)
-  target_link_options(pixel_flow_xr PRIVATE /SUBSYSTEM:WINDOWS)
+  target_compile_options(vr_dead_pixel_test PRIVATE /W4 /permissive- /EHsc /utf-8)
+  target_link_options(vr_dead_pixel_test PRIVATE /SUBSYSTEM:WINDOWS)
 endif()
 
-set_target_properties(pixel_flow_xr PROPERTIES
-  OUTPUT_NAME "PixelFlowXR"
-  VS_DEBUGGER_WORKING_DIRECTORY "$<TARGET_FILE_DIR:pixel_flow_xr>"
+set_target_properties(vr_dead_pixel_test PROPERTIES
+  OUTPUT_NAME "VRDeadPixelTest"
+  VS_DEBUGGER_WORKING_DIRECTORY "$<TARGET_FILE_DIR:vr_dead_pixel_test>"
 )
 
 if(BUILD_TESTING)
-  add_executable(pixel_flow_shader_check
+  add_executable(vr_dead_pixel_test_shader_check
     tests/shader_check.cpp
     src/shaders.h
   )
-  target_include_directories(pixel_flow_shader_check PRIVATE src)
-  target_link_libraries(pixel_flow_shader_check PRIVATE d3dcompiler)
+  target_include_directories(vr_dead_pixel_test_shader_check PRIVATE src)
+  target_link_libraries(vr_dead_pixel_test_shader_check PRIVATE d3dcompiler)
   if(MSVC)
-    target_compile_options(pixel_flow_shader_check PRIVATE /W4 /permissive- /EHsc /utf-8)
+    target_compile_options(vr_dead_pixel_test_shader_check PRIVATE /W4 /permissive- /EHsc /utf-8)
   endif()
-  add_test(NAME pixel_flow_shader_check COMMAND pixel_flow_shader_check)
+  add_test(NAME vr_dead_pixel_test_shader_check COMMAND vr_dead_pixel_test_shader_check)
 endif()

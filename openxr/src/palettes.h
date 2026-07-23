@@ -3,7 +3,7 @@
 #include <array>
 #include <cstdint>
 
-namespace pixel_flow {
+namespace vr_dead_pixel_test {
 
 struct AccentColor {
     std::uint32_t rgb;
@@ -65,4 +65,4 @@ inline constexpr std::array<Palette, 14> kPalettes{{
      {0xCEDADC, 0.08F}, {0xDDE6E8, 0.06F}, false},
 }};
 
-}  // namespace pixel_flow
+}  // namespace vr_dead_pixel_test

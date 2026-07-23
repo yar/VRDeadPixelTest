@@ -1,6 +1,6 @@
 #pragma once
 
-namespace pixel_flow {
+namespace vr_dead_pixel_test {
 
 inline constexpr const char* kShaderSource = R"hlsl(
 cbuffer PatternConstants : register(b0)
@@ -154,4 +154,4 @@ float4 PixelMain(VertexOutput input) : SV_TARGET
 }
 )hlsl";
 
-}  // namespace pixel_flow
+}  // namespace vr_dead_pixel_test

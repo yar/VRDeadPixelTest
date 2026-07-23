@@ -1,9 +1,9 @@
 cmake_minimum_required(VERSION 3.24)
 
-project(PixelFlowXR VERSION 0.1.0 LANGUAGES CXX)
+project(VRDeadPixelTest VERSION 0.1.0 LANGUAGES CXX)
 
 if(NOT WIN32)
-  message(FATAL_ERROR "Pixel Flow XR currently targets Windows OpenXR runtimes with Direct3D 11.")
+  message(FATAL_ERROR "VRDeadPixelTest currently targets Windows OpenXR runtimes with Direct3D 11.")
 endif()
 
 set(CMAKE_CXX_STANDARD 20)

@@ -1,6 +1,6 @@
-# Pixel Flow
+# VRDeadPixelTest
 
-Pixel Flow is an experimental display-inspection tool for finding dead, stuck,
+VRDeadPixelTest is an experimental display-inspection tool for finding dead, stuck,
 or partially stuck pixels. Its low-contrast organic pattern gives the eye a
 moving reference field, making a defect that remains fixed to the display easier
 to notice.
@@ -8,7 +8,7 @@ to notice.
 The repository contains two applications:
 
 - **2D calibration app** — the browser prototype in `app/`, deployed at
-  [pixel-flow-display-test.yaroslavdm.chatgpt.site](https://pixel-flow-display-test.yaroslavdm.chatgpt.site).
+  [Pixel Flow](https://pixel-flow-display-test.yaroslavdm.chatgpt.site).
 - **OpenXR app** — the native Windows/Direct3D 11 headset application in
   `openxr/`.
 
@@ -68,14 +68,14 @@ The build downloads the official Khronos OpenXR loader at the pinned 1.1.58
 release. Run the result with the headset connected:
 
 ```powershell
-.\out-openxr\bin\PixelFlowXR.exe
+.\out-openxr\bin\VRDeadPixelTest.exe
 ```
 
 If Windows reports that no OpenXR runtime is available, select or install the
-runtime supplied by the headset platform, then start Pixel Flow XR again.
+runtime supplied by the headset platform, then start VRDeadPixelTest again.
 
 If the application returns to the home environment during startup, inspect
-`%LOCALAPPDATA%\PixelFlowXR\PixelFlowXR.log`. The log records each initialization
+`%LOCALAPPDATA%\VRDeadPixelTest\VRDeadPixelTest.log`. The log records each initialization
 stage and the exact OpenXR or Direct3D error without requiring the headset to
 remain in the application.
 
@@ -89,4 +89,4 @@ npm run dev
 Use `Space`/`Right Arrow` for the next palette, `Left Arrow` for the previous
 palette, and `Esc` to end the test session.
 
-Pixel Flow is an inspection aid, not a display certification or medical tool.
+VRDeadPixelTest is an inspection aid, not a display certification or medical tool.

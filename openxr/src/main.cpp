@@ -25,15 +25,15 @@
 #include "palettes.h"
 #include "shaders.h"
 
-namespace pixel_flow {
+namespace vr_dead_pixel_test {
 
 using Microsoft::WRL::ComPtr;
 using Clock = std::chrono::steady_clock;
 
 namespace {
 
-constexpr wchar_t kWindowClassName[] = L"PixelFlowXRCompanion";
-constexpr wchar_t kWindowTitle[] = L"Pixel Flow XR";
+constexpr wchar_t kWindowClassName[] = L"VRDeadPixelTestCompanion";
+constexpr wchar_t kWindowTitle[] = L"VRDeadPixelTest";
 constexpr float kSphereRadiusMeters = 3.0F;
 
 std::ofstream gLog;
@@ -57,13 +57,13 @@ void InitializeLog() {
     const DWORD length = GetEnvironmentVariableW(L"LOCALAPPDATA", localAppData, MAX_PATH);
     std::filesystem::path directory =
         length > 0 && length < MAX_PATH
-            ? std::filesystem::path(localAppData) / L"PixelFlowXR"
-            : std::filesystem::temp_directory_path() / L"PixelFlowXR";
+            ? std::filesystem::path(localAppData) / L"VRDeadPixelTest"
+            : std::filesystem::temp_directory_path() / L"VRDeadPixelTest";
     std::error_code error;
     std::filesystem::create_directories(directory, error);
-    gLogPath = directory / L"PixelFlowXR.log";
+    gLogPath = directory / L"VRDeadPixelTest.log";
     gLog.open(gLogPath, std::ios::out | std::ios::trunc);
-    Log("Pixel Flow XR startup");
+    Log("VRDeadPixelTest startup");
 }
 
 void CheckXr(XrResult result, const char* operation) {
@@ -336,7 +336,8 @@ class Application {
 
         SetTextColor(dc, muted);
         SelectObject(dc, eyebrowFont);
-        TextOutW(dc, 30, 25, L"PIXEL FLOW  /  OPENXR", 21);
+        constexpr wchar_t eyebrow[] = L"VR DEAD PIXEL TEST  /  OPENXR";
+        TextOutW(dc, 30, 25, eyebrow, static_cast<int>(std::size(eyebrow) - 1));
 
         SetTextColor(dc, foreground);
         SelectObject(dc, titleFont);
@@ -414,9 +415,9 @@ class Application {
 
         const char* enabledExtensions[] = {XR_KHR_D3D11_ENABLE_EXTENSION_NAME};
         XrInstanceCreateInfo createInfo{XR_TYPE_INSTANCE_CREATE_INFO};
-        strcpy_s(createInfo.applicationInfo.applicationName, "Pixel Flow XR");
+        strcpy_s(createInfo.applicationInfo.applicationName, "VRDeadPixelTest");
         createInfo.applicationInfo.applicationVersion = 1;
-        strcpy_s(createInfo.applicationInfo.engineName, "Pixel Flow Native");
+        strcpy_s(createInfo.applicationInfo.engineName, "VRDeadPixelTest Native");
         createInfo.applicationInfo.engineVersion = 1;
         createInfo.applicationInfo.apiVersion = XR_API_VERSION_1_0;
         createInfo.enabledExtensionCount = 1;
@@ -557,7 +558,7 @@ class Application {
         suggestion.suggestedBindings = bindings.data();
         const XrResult result = xrSuggestInteractionProfileBindings(instance_, &suggestion);
         if (XR_FAILED(result)) {
-            OutputDebugStringA((std::string("Pixel Flow XR: runtime declined bindings for ") +
+            OutputDebugStringA((std::string("VRDeadPixelTest: runtime declined bindings for ") +
                                 profile + "\n")
                                    .c_str());
         }
@@ -719,7 +720,7 @@ class Application {
         ComPtr<ID3DBlob> shader;
         ComPtr<ID3DBlob> errors;
         const HRESULT result = D3DCompile(kShaderSource, std::strlen(kShaderSource),
-                                          "PixelFlowPattern.hlsl", nullptr, nullptr,
+                                          "VRDeadPixelTestPattern.hlsl", nullptr, nullptr,
                                           entryPoint, profile, flags, 0, &shader, &errors);
         if (FAILED(result)) {
             const std::string detail = errors
@@ -1103,20 +1104,21 @@ class Application {
     bool sphereCenterInitialized_{};
 };
 
-}  // namespace pixel_flow
+}  // namespace vr_dead_pixel_test
 
 int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int) {
-    pixel_flow::InitializeLog();
+    vr_dead_pixel_test::InitializeLog();
     try {
-        pixel_flow::Application application(instance);
+        vr_dead_pixel_test::Application application(instance);
         return application.Run();
     } catch (const std::exception& error) {
-        pixel_flow::Log(std::string("Fatal error: ") + error.what());
-        std::wstring message = pixel_flow::Utf8ToWide(error.what());
-        if (!pixel_flow::gLogPath.empty()) {
-            message += L"\n\nDiagnostic log:\n" + pixel_flow::gLogPath.wstring();
+        vr_dead_pixel_test::Log(std::string("Fatal error: ") + error.what());
+        std::wstring message = vr_dead_pixel_test::Utf8ToWide(error.what());
+        if (!vr_dead_pixel_test::gLogPath.empty()) {
+            message += L"\n\nDiagnostic log:\n" +
+                       vr_dead_pixel_test::gLogPath.wstring();
         }
-        MessageBoxW(nullptr, message.c_str(), L"Pixel Flow XR could not start",
+        MessageBoxW(nullptr, message.c_str(), L"VRDeadPixelTest could not start",
                     MB_OK | MB_ICONERROR);
         return 1;
     }
