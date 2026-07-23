@@ -12,7 +12,7 @@ easier to notice.
 
 There are two versions:
 
-- [Open the 2D test in a browser](https://pixel-flow-display-test.yaroslavdm.chatgpt.site)
+- [Open the 2D test in a browser](https://yar.github.io/VRDeadPixelTest/)
   for monitors and TVs.
 - [Download the latest Windows release](https://github.com/yar/VRDeadPixelTest/releases/latest)
   for OpenXR headsets.
@@ -32,7 +32,7 @@ replace the manufacturer's own acceptance test.
 
 ## Using the 2D test
 
-1. Open the [browser version](https://pixel-flow-display-test.yaroslavdm.chatgpt.site).
+1. Open the [browser version](https://yar.github.io/VRDeadPixelTest/).
 2. Press `F` for fullscreen.
 3. Relax your gaze and let the pattern drift. Scan the display rather than
    staring hard at one spot.
@@ -155,6 +155,9 @@ The browser source is in `app/`. To run it locally:
 npm install
 npm run dev
 ```
+
+`npm run build:pages` creates the static build used by GitHub Pages. A GitHub
+Actions workflow publishes it automatically after web changes reach `main`.
 
 The native headset source is in `openxr/`. It currently requires:
 
