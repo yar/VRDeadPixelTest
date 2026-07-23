@@ -26,6 +26,9 @@ boundaries. Those boundaries are defined directly on the physical sphere, giving
 the two eyes clear matching features for depth fusion without introducing a
 texture seam. This diagnostic pattern intentionally prioritizes stereo clarity;
 the 2D prototype retains its smooth moving pattern.
+Inside each XR ribbon, a low-amplitude, multi-scale stochastic field adds subtle
+brightness variation. Its scales are non-harmonic and rotated away from the
+tracking axes to avoid forming secondary stripes or periodic banding.
 When supported by the runtime, the app renders through a 16-bit floating-point
 swapchain. A sub-LSB dither is attached to physical points on the sphere surface,
 so quantization reduction remains stereo-coherent between the eyes.

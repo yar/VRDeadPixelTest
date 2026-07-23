@@ -43,6 +43,35 @@ float Hash31(float3 value)
     return frac((value.x + value.y) * value.z);
 }
 
+float ValueNoise3D(float3 position)
+{
+    float3 cell = floor(position);
+    float3 fraction = frac(position);
+    float3 blend = fraction * fraction * (3.0 - 2.0 * fraction);
+
+    float lower00 = lerp(Hash31(cell + float3(0.0, 0.0, 0.0)),
+                         Hash31(cell + float3(1.0, 0.0, 0.0)), blend.x);
+    float lower10 = lerp(Hash31(cell + float3(0.0, 1.0, 0.0)),
+                         Hash31(cell + float3(1.0, 1.0, 0.0)), blend.x);
+    float upper00 = lerp(Hash31(cell + float3(0.0, 0.0, 1.0)),
+                         Hash31(cell + float3(1.0, 0.0, 1.0)), blend.x);
+    float upper10 = lerp(Hash31(cell + float3(0.0, 1.0, 1.0)),
+                         Hash31(cell + float3(1.0, 1.0, 1.0)), blend.x);
+    float lower = lerp(lower00, lower10, blend.y);
+    float upper = lerp(upper00, upper10, blend.y);
+    return lerp(lower, upper, blend.z);
+}
+
+float3 RotateNoiseSpace(float3 value)
+{
+    // Orthonormal rotation keeps the stochastic lattice from lining up with
+    // the OpenXR LOCAL axes or with the dominant direction of the ribbons.
+    return float3(
+        dot(value, float3(0.36, 0.48, 0.80)),
+        dot(value, float3(-0.80, 0.60, 0.00)),
+        dot(value, float3(-0.48, -0.64, 0.60)));
+}
+
 float3 LinearToSrgb(float3 value)
 {
     float3 low = value * 12.92;
@@ -90,11 +119,27 @@ float4 PixelMain(VertexOutput input) : SV_TARGET
     float bandIndex = floor(frac(bandPhase / 5.0) * 5.0);
     float3 color = gColors[(int)bandIndex + 1].rgb;
 
+    // Add smooth stochastic luminance variation inside every ribbon. The three
+    // non-harmonic scales prevent a repeating wave or a second family of bands
+    // from emerging, while their low total amplitude preserves the hard edges.
+    float3 localSurface = surfacePosition - gSphereCenterRadius.xyz;
+    float3 noiseSpace = RotateNoiseSpace(localSurface);
+    float coarseNoise = ValueNoise3D(
+        noiseSpace * 2.15 + float3(19.0, 7.0, -11.0)) - 0.5;
+    float mediumNoise = ValueNoise3D(
+        noiseSpace.yzx * 5.37 + float3(-5.0, 13.0, 23.0)) - 0.5;
+    float fineNoise = ValueNoise3D(
+        noiseSpace.zxy * 12.91 + float3(37.0, -17.0, 3.0)) - 0.5;
+    float luminanceVariation =
+        0.070 * coarseNoise + 0.035 * mediumNoise + 0.015 * fineNoise;
+    color *= 1.0 + luminanceVariation;
+
     // Sub-LSB dither is indexed by the finite sphere's physical surface, not
     // by render-target pixels. It therefore follows the same geometry and
     // disparity in both eyes instead of producing binocularly independent noise.
     float dither =
-        (Hash31(floor(surfacePosition * 260.0)) - 0.5) * gOutputParameters.y;
+        (Hash31(floor(noiseSpace * 260.0) + float3(17.0, 59.0, 101.0)) - 0.5) *
+        gOutputParameters.y;
     if (gOutputParameters.x > 0.5)
     {
         float3 encoded = saturate(LinearToSrgb(color) + dither);
