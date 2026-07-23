@@ -33,56 +33,72 @@ float3 RotateByQuaternion(float3 value, float4 quaternion)
         cross(quaternion.xyz, value) + quaternion.w * value);
 }
 
-float Hash21(float2 value)
+float3 PaletteGradient(float coordinate)
 {
-    value = frac(value * float2(123.34, 456.21));
-    value += dot(value, value + 45.32);
-    return frac(value.x * value.y);
+    float scaled = saturate(coordinate) * 4.0;
+    int lowerIndex = min((int)floor(scaled), 3);
+    float amount = scaled - (float)lowerIndex;
+    amount = amount * amount * (3.0 - 2.0 * amount);
+    return lerp(gColors[lowerIndex + 1].rgb,
+                gColors[lowerIndex + 2].rgb, amount);
 }
 
 float4 PixelMain(VertexOutput input) : SV_TARGET
 {
-    const float pi = 3.14159265358979323846;
-    const float tau = 6.28318530717958647692;
-
     float viewX = lerp(gFov.x, gFov.y, input.uv.x);
     float viewY = lerp(gFov.z, gFov.w, input.uv.y);
     float3 viewDirection = normalize(float3(viewX, viewY, -1.0));
     float3 worldDirection = normalize(RotateByQuaternion(viewDirection, gOrientation));
 
-    float longitude = atan2(worldDirection.x, -worldDirection.z);
-    float u = frac(longitude / tau + 0.5);
-    float v = asin(clamp(worldDirection.y, -1.0, 1.0)) / pi + 0.5;
+    // Analytic waves evaluated directly on the unit sphere. Because the field
+    // depends on the 3D direction rather than latitude/longitude, it remains
+    // continuous at the rear meridian and at both poles.
+    float broadPhase =
+        dot(worldDirection, float3(1.35, 8.20, 0.90)) +
+        0.72 * sin(dot(worldDirection, float3(-3.40, 1.20, 2.80)));
+    float crossingPhase =
+        dot(worldDirection, float3(-4.80, 2.10, 5.60)) +
+        0.44 * sin(dot(worldDirection, float3(2.30, 3.80, -1.70)));
+    float diagonalPhase = dot(worldDirection, float3(8.10, -3.00, -6.40)) + 0.85;
 
-    float wave =
-        0.22 * sin(u * tau * 2.0 + 0.65) +
-        0.085 * sin(u * tau * 3.0 - 0.9) +
-        0.032 * sin(u * tau * 5.0 + v * 1.7);
-    float bandCoordinate = v * 5.0 + wave;
-    int bandIndex = (int)floor(frac(bandCoordinate / 5.0) * 5.0);
-    float3 color = lerp(gColors[0].rgb, gColors[bandIndex + 1].rgb, 0.88);
+    float broadWave = sin(broadPhase);
+    float crossingWave = sin(crossingPhase);
+    float diagonalWave = sin(diagonalPhase);
+    float continuousField =
+        0.58 * broadWave + 0.29 * crossingWave + 0.13 * diagonalWave;
 
-    float withinBand = frac(bandCoordinate);
-    float edgeDistance = min(withinBand, 1.0 - withinBand);
-    float contourWidth = max(fwidth(bandCoordinate) * 1.2, 0.008);
-    float contour = 1.0 - smoothstep(0.0, contourWidth, edgeDistance);
-    color = lerp(color, gContour.rgb, contour * gContour.a);
+    // Smoothly travel through all five nearby palette tones. There are no
+    // constant-fill bands: even the broad color structure is interpolated.
+    float paletteCoordinate = 0.5 + 0.42 * continuousField;
+    float3 paletteColor = PaletteGradient(paletteCoordinate);
+    float3 color = lerp(gColors[0].rgb, paletteColor, 0.86);
 
-    // Sparse, soft landmarks move with the world-locked sphere. They make a
-    // stationary panel defect easier to separate without creating visual noise.
-    float2 gridScale = float2(10.0, 6.0);
-    float2 grid = float2(u, v) * gridScale;
-    float2 cell = floor(grid);
-    cell.x = fmod(cell.x + gridScale.x, gridScale.x);
-    float2 center = float2(
-        Hash21(cell + float2(2.1, 7.3)),
-        Hash21(cell + float2(8.7, 1.9))
+    // Two shorter, crossing waves add gentle continuous luminance variation
+    // inside the broad shapes. Their periods remain large enough to avoid a
+    // grating or moire-like appearance while eliminating visually flat areas.
+    float detailPhase =
+        dot(worldDirection, float3(17.0, 5.5, -11.0)) +
+        0.36 * sin(dot(worldDirection, float3(-7.5, 12.0, 4.0)));
+    float finePhase = dot(worldDirection, float3(-23.0, 9.5, 14.5)) + 1.1;
+    float detailWave = sin(detailPhase);
+    float fineWave = sin(finePhase);
+    float luminance = 1.0 + 0.040 * detailWave + 0.018 * fineWave;
+    color *= luminance;
+
+    // A very small phase-separated channel component reduces 8-bit plateaus
+    // without becoming visibly colorful; perceived modulation remains brightness-led.
+    float3 subpixelRipple = float3(
+        sin(finePhase + 0.0),
+        sin(finePhase + 2.0943951),
+        sin(finePhase + 4.1887902)
     );
-    float2 local = frac(grid) - center;
-    local.x *= 0.55 + Hash21(cell + 4.2) * 0.5;
-    local.y *= 2.6;
-    float fleck = 1.0 - smoothstep(0.10, 0.22, length(local));
-    color = lerp(color, gFleck.rgb, fleck * gFleck.a);
+    color *= 1.0 + 0.006 * subpixelRipple;
+
+    // Retain the palette's subdued highlight/shadow bias at wave extrema.
+    float crest = smoothstep(0.72, 1.0, broadWave * 0.5 + 0.5);
+    float trough = 1.0 - smoothstep(0.0, 0.28, broadWave * 0.5 + 0.5);
+    color = lerp(color, gContour.rgb, crest * gContour.a * 0.22);
+    color = lerp(color, gFleck.rgb, trough * gFleck.a * 0.18);
 
     return float4(color, 1.0);
 }

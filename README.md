@@ -20,6 +20,10 @@ like a seamless, inside-out sphere of infinite radius. Turn your head slowly to
 move the background across the headset panels; a panel-fixed defect should not
 move with it.
 
+The field uses several overlapping analytic waves to vary palette tone and
+brightness continuously. It contains no solid-fill bands or texture seams, and
+the shorter waves are kept low-contrast to avoid a harsh grating effect.
+
 The VR app carries over all 14 calibrated palettes from the 2D prototype:
 subdued neutrals and mixed tones, RGB-focused mid-tones, dark checks, and bright
 checks. Color changes use the same order in both applications.
